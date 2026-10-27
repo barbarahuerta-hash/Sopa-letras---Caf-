@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sopa de Letras - El Café ☕</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-700-normal.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #3e2723 0%, #5d4037 50%, #4e342e 100%);
+    min-height: 100vh;
+    color: #fff;
+    padding: 16px;
+    overflow-x: hidden;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    color: #f5deb3;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+    margin-bottom: 6px;
+  }
+  header p {
+    color: #d7ccc8;
+    font-size: 0.95rem;
+  }
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(245,222,179,0.25);
+    border-radius: 14px;
+    padding: 12px 18px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(8px);
+    flex-wrap: wrap;
+  }
+  .timer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #f5deb3;
+  }
+  .timer-icon {
+    font-size: 1.6rem;
+  }
+  .timer.warning { color: #ff8a65; animation: pulse 1s infinite; }
+  .timer.danger { color: #ff5252; animation: pulse 0.5s infinite; }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .score {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    color: #d7ccc8;
+  }
+  .score strong { color: #f5deb3; font-size: 1.3rem; }
+  .btn {
+    background: linear-gradient(135deg, #8d6e63, #6d4c41);
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.4); }
+  .btn:active { transform: translateY(0); }
+  .main {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 900px) {
+    .main { grid-template-columns: 1fr 280px; }
+  }
+  .grid-wrap {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(245,222,179,0.2);
+    border-radius: 16px;
+    padding: 12px;
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    gap: 2px;
+    aspect-ratio: 1/1;
+    user-select: none;
+    touch-action: none;
+  }
+  .cell {
+    background: rgba(62,39,35,0.7);
+    border: 1px solid rgba(245,222,179,0.15);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #f5deb3;
+    font-size: clamp(0.7rem, 2.2vw, 1.1rem);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s, color 0.15s;
+    aspect-ratio: 1/1;
+  }
+  .cell.selecting {
+    background: #ffb74d;
+    color: #3e2723;
+    transform: scale(1.08);
+    z-index: 2;
+  }
+  .cell.found {
+    background: linear-gradient(135deg, #66bb6a, #43a047);
+    color: #fff;
+    animation: foundPop 0.5s ease;
+  }
+  @keyframes foundPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+  .words-panel {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(245,222,179,0.2);
+    border-radius: 16px;
+    padding: 18px;
+    backdrop-filter: blur(6px);
+  }
+  .words-panel h2 {
+    font-family: 'Playfair Display', serif;
+    color: #f5deb3;
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .words-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  @media (min-width: 900px) {
+    .words-list { grid-template-columns: 1fr; }
+  }
+  .words-list li {
+    background: rgba(141,110,99,0.3);
+    border: 1px solid rgba(245,222,179,0.2);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    text-align: center;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    color: #f5deb3;
+    transition: all 0.3s;
+  }
+  .words-list li.found {
+    background: linear-gradient(135deg, #66bb6a, #43a047);
+    color: #fff;
+    text-decoration: line-through;
+    opacity: 0.75;
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: linear-gradient(135deg, #4e342e, #3e2723);
+    border: 2px solid #f5deb3;
+    border-radius: 20px;
+    padding: 40px 30px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+    animation: modalIn 0.4s ease;
+  }
+  @keyframes modalIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: #f5deb3;
+    margin-bottom: 12px;
+  }
+  .modal p {
+    color: #d7ccc8;
+    margin-bottom: 20px;
+    font-size: 1.05rem;
+  }
+  .modal .emoji { font-size: 4rem; margin-bottom: 10px; display: block; }
+  .instructions {
+    background: rgba(0,0,0,0.25);
+    border-left: 3px solid #f5deb3;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+    color: #d7ccc8;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>☕ Sopa de Letras del Café</h1>
+    <p>Nivel Intermedio · Encuentra las 10 palabras ocultas</p>
+  </header>
+
+  <div class="hud">
+    <div class="timer" id="timer">
+      <span class="timer-icon">⏱️</span>
+      <span id="timer-text">05:00</span>
+    </div>
+    <div class="score">
+      <span>Encontradas:</span>
+      <strong><span id="found-count">0</span>/10</strong>
+    </div>
+    <button class="btn" id="restart-btn">🔄 Reiniciar</button>
+  </div>
+
+  <div class="instructions">
+    💡 <strong>Cómo jugar:</strong> Haz clic y arrastra sobre las letras para seleccionar una palabra. Las palabras pueden estar en horizontal, vertical o diagonal (incluso al revés).
+  </div>
+
+  <div class="main">
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="words-panel">
+      <h2>📜 Palabras</h2>
+      <ul class="words-list" id="words-list"></ul>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <span class="emoji" id="modal-emoji">🎉</span>
+    <h2 id="modal-title">¡Felicidades!</h2>
+    <p id="modal-msg">Has encontrado todas las palabras.</p>
+    <button class="btn" id="modal-btn">Jugar de nuevo</button>
+  </div>
+</div>
+
+<script>
+const WORDS = ['ESPRESSO','CAPPUCCINO','LATTE','MOCHA','GRANO','TOSTADO','AROMA','CREMA','FILTRO','BARISTA'];
+const SIZE = 15;
+const DIRECTIONS = [
+  [0,1],[0,-1],[1,0],[-1,0],
+  [1,1],[-1,-1],[1,-1],[-1,1]
+];
+
+let grid = [];
+let wordPlacements = {};
+let foundWords = new Set();
+let selecting = false;
+let startCell = null;
+let currentPath = [];
+let timeLeft = 300;
+let timerId = null;
+let gameOver = false;
+
+const gridEl = document.getElementById('grid');
+const wordsListEl = document.getElementById('words-list');
+const timerTextEl = document.getElementById('timer-text');
+const timerEl = document.getElementById('timer');
+const foundCountEl = document.getElementById('found-count');
+const overlay = document.getElementById('overlay');
+const modalTitle = document.getElementById('modal-title');
+const modalMsg = document.getElementById('modal-msg');
+const modalEmoji = document.getElementById('modal-emoji');
+
+function createEmptyGrid() {
+  const g = [];
+  for (let i = 0; i < SIZE; i++) {
+    g.push(new Array(SIZE).fill(''));
+  }
+  return g;
+}
+
+function canPlace(word, r, c, dr, dc, g) {
+  for (let i = 0; i < word.length; i++) {
+    const nr = r + i*dr;
+    const nc = c + i*dc;
+    if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) return false;
+    if (g[nr][nc] !== '' && g[nr][nc] !== word[i]) return false;
+  }
+  return true;
+}
+
+function placeWord(word, g) {
+  const shuffledDirs = [...DIRECTIONS].sort(() => Math.random() - 0.5);
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const dir = shuffledDirs[attempt % shuffledDirs.length];
+    const r = Math.floor(Math.random() * SIZE);
+    const c = Math.floor(Math.random() * SIZE);
+    if (canPlace(word, r, c, dir[0], dir[1], g)) {
+      const cells = [];
+      for (let i = 0; i < word.length; i++) {
+        const nr = r + i*dir[0];
+        const nc = c + i*dir[1];
+        g[nr][nc] = word[i];
+        cells.push([nr,nc]);
+      }
+      return cells;
+    }
+  }
+  return null;
+}
+
+function buildGrid() {
+  const g = createEmptyGrid();
+  const placements = {};
+  // Ordenar por longitud (más largas primero)
+  const sorted = [...WORDS].sort((a,b) => b.length - a.length);
+  for (const w of sorted) {
+    const cells = placeWord(w, g);
+    if (cells) placements[w] = cells;
+  }
+  // Rellenar vacíos
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let i = 0; i < SIZE; i++) {
+    for (let j = 0; j < SIZE; j++) {
+      if (g[i][j] === '') {
+        g[i][j] = letters[Math.floor(Math.random() * letters.length)];
+      }
+    }
+  }
+  return { grid: g, placements };
+}
+
+function renderGrid() {
+  gridEl.innerHTML = '';
+  for (let i = 0; i < SIZE; i++) {
+    for (let j = 0; j < SIZE; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.textContent = grid[i][j];
+      cell.dataset.r = i;
+      cell.dataset.c = j;
+      gridEl.appendChild(cell);
+    }
+  }
+}
+
+function renderWords() {
+  wordsListEl.innerHTML = '';
+  for (const w of WORDS) {
+    const li = document.createElement('li');
+    li.textContent = w;
+    li.dataset.word = w;
+    if (foundWords.has(w)) li.classList.add('found');
+    wordsListEl.appendChild(li);
+  }
+}
+
+function getCell(r, c) {
+  return gridEl.children[r * SIZE + c];
+}
+
+function clearSelection() {
+  for (const [r,c] of currentPath) {
+    const cell = getCell(r,c);
+    if (cell && !cell.classList.contains('found')) {
+      cell.classList.remove('selecting');
+    }
+  }
+  currentPath = [];
+}
+
+function getPath(r1, c1, r2, c2) {
+  const dr = r2 - r1;
+  const dc = c2 - c1;
+  if (dr === 0 && dc === 0) return [[r1,c1]];
+  // Debe ser línea recta
+  const absDr = Math.abs(dr);
+  const absDc = Math.abs(dc);
+  if (absDr !== 0 && absDc !== 0 && absDr !== absDc) return null;
+  const steps = Math.max(absDr, absDc);
+  const stepR = dr === 0 ? 0 : dr / absDr;
+  const stepC = dc === 0 ? 0 : dc / absDc;
+  const path = [];
+  for (let i = 0; i <= steps; i++) {
+    path.push([r1 + i*stepR, c1 + i*stepC]);
+  }
+  return path;
+}
+
+function updateSelection(r2, c2) {
+  clearSelection();
+  if (!startCell) return;
+  const path = getPath(startCell[0], startCell[1], r2, c2);
+  if (!path) return;
+  currentPath = path;
+  for (const [r,c] of path) {
+    const cell = getCell(r,c);
+    if (!cell.classList.contains('found')) {
+      cell.classList.add('selecting');
+    }
+  }
+}
+
+function checkWord() {
+  if (currentPath.length < 2) return;
+  const letters = currentPath.map(([r,c]) => grid[r][c]).join('');
+  const reversed = letters.split('').reverse().join('');
+  let matched = null;
+  for (const w of WORDS) {
+    if (!foundWords.has(w) && (letters === w || reversed === w)) {
+      matched = w;
+      break;
+    }
+  }
+  if (matched) {
+    foundWords.add(matched);
+    for (const [r,c] of currentPath) {
+      const cell = getCell(r,c);
+      cell.classList.remove('selecting');
+      cell.classList.add('found');
+    }
+    // Marcar en lista
+    const li = wordsListEl.querySelector(`[data-word="${matched}"]`);
+    if (li) li.classList.add('found');
+    foundCountEl.textContent = foundWords.size;
+    if (foundWords.size === WORDS.length) {
+      endGame(true);
+    }
+  }
+  clearSelection();
+}
+
+function getCellFromEvent(e) {
+  const touch = e.touches ? e.touches[0] : e;
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (el && el.classList.contains('cell')) {
+    return [parseInt(el.dataset.r), parseInt(el.dataset.c)];
+  }
+  return null;
+}
+
+function onStart(e) {
+  if (gameOver) return;
+  e.preventDefault();
+  const pos = getCellFromEvent(e);
+  if (!pos) return;
+  selecting = true;
+  startCell = pos;
+  updateSelection(pos[0], pos[1]);
+}
+
+function onMove(e) {
+  if (!selecting || gameOver) return;
+  e.preventDefault();
+  const pos = getCellFromEvent(e);
+  if (!pos) return;
+  updateSelection(pos[0], pos[1]);
+}
+
+function onEnd(e) {
+  if (!selecting) return;
+  checkWord();
+  selecting = false;
+  startCell = null;
+}
+
+gridEl.addEventListener('mousedown', onStart);
+gridEl.addEventListener('mousemove', onMove);
+document.addEventListener('mouseup', onEnd);
+gridEl.addEventListener('touchstart', onStart, { passive: false });
+gridEl.addEventListener('touchmove', onMove, { passive: false });
+document.addEventListener('touchend', onEnd);
+
+function updateTimer() {
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  timerTextEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  timerEl.classList.remove('warning','danger');
+  if (timeLeft <= 30) timerEl.classList.add('danger');
+  else if (timeLeft <= 60) timerEl.classList.add('warning');
+}
+
+function startTimer() {
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    timeLeft--;
+    updateTimer();
+    if (timeLeft <= 0) {
+      endGame(false);
+    }
+  }, 1000);
+}
+
+function endGame(won) {
+  gameOver = true;
+  clearInterval(timerId);
+  if (won) {
+    modalEmoji.textContent = '🏆';
+    modalTitle.textContent = '¡Victoria!';
+    const used = 300 - timeLeft;
+    const m = Math.floor(used/60);
+    const s = used % 60;
+    modalMsg.textContent = `¡Has encontrado las 10 palabras en ${m}m ${s}s! Eres un verdadero experto del café.`;
+  } else {
+    modalEmoji.textContent = '⏰';
+    modalTitle.textContent = '¡Se acabó el tiempo!';
+    modalMsg.textContent = `Encontraste ${foundWords.size} de 10 palabras. ¡Inténtalo de nuevo!`;
+  }
+  overlay.classList.add('show');
+}
+
+function initGame() {
+  foundWords.clear();
+  timeLeft = 300;
+  gameOver = false;
+  overlay.classList.remove('show');
+  const result = buildGrid();
+  grid = result.grid;
+  wordPlacements = result.placements;
+  renderGrid();
+  renderWords();
+  foundCountEl.textContent = '0';
+  updateTimer();
+  startTimer();
+}
+
+document.getElementById('restart-btn').addEventListener('click', initGame);
+document.getElementById('modal-btn').addEventListener('click', initGame);
+
+initGame();
+</script>
+</body>
+</html>
